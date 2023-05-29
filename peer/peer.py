@@ -4,49 +4,25 @@ import threading
 from PIL import Image
 
 
-def is_port_busy(port):
-    try:
-        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        sock.settimeout(1)
-        sock.bind(("localhost", port))
-        sock.close()
-        return False
-    except socket.error:
-        return True
-
-
-def file_receiver(my_ip, target_ip, filename):
-    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    port_and_ip = (target_ip, 10000)
-    sock.connect(port_and_ip)
-    empty_port = 1
-    for i in range(10001, 10011):
-        if not is_port_busy(empty_port):
-            empty_port = i
-    if empty_port == 1:
-        print("you dont have any free legal port!!")
-        return
-    message = my_ip + ':' + str(empty_port) + ':' + filename
+def receiver(host, target_ip, filename):
+    soc = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    address = (target_ip, 8080)
+    soc.connect(address)
+    message = host + ':' + filename
     udp_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    udp_socket.bind((my_ip, empty_port))
-    sock.sendall(message.encode())
+    udp_socket.bind((host, 8081))
+    soc.sendall(message.encode())
     chunks = []
     while True:
         chunk, addr = udp_socket.recvfrom(1024)
         if not chunk:
             break
         chunks.append(chunk)
-
-    # Combine the received chunks into a single byte string
-    data = b''.join(chunks)
-
-    # Write the data to a file
+    file = b''.join(chunks)
     with open('./files/' + filename, 'wb') as f:
-        f.write(data)
-
-    # Close the socket
+        f.write(file)
     udp_socket.close()
-    sock.close()
+    soc.close()
 
 
 def file_sender(dest_ip, dest_port, dest_filename):
@@ -107,35 +83,36 @@ def listener(ip_address, tcp_handshake_port):
         sock.close()
 
 
-tcp_handshake_port = 10000
-hostname = socket.gethostname()
-ip_address = socket.gethostbyname(hostname)
-init_url = 'http://127.1.1.2:8080/init'
-get_usernames = 'http://127.1.1.2:8080/getAll'
-get_ip = 'http://127.1.1.2:8080/getIp?username='
-threading.Thread(target=listener, args=(ip_address, tcp_handshake_port)).start()
-print("Welcome to this p2p app")
-while True:
-    inp = input('choose your action:\n1.init \n2.get usernames\n3.get specific ip\n4.request for connection\ninput:')
-    if inp == '1':
-        username = input("Enter a username:")
-        data = {
-            "username": username,
-            "ip": ip_address
-        }
-        response = requests.post(init_url, json=data)
-        print('HTTP Server Response:', response.text)
-    elif inp == '2':
-        response = requests.get(get_usernames)
-        print('HTTP Server Response:', response.text)
-    elif inp == '3':
-        target_ip = input("Enter Target Ip:")
-        response = requests.get(get_ip + target_ip)
-        print('HTTP Server Response:', response.text)
-    elif inp == '4':
-        target_ip = input('Enter your target ip:')
-        filename = input('Enter filename:')
-        threading.Thread(target=file_receiver, args=(ip_address, target_ip, filename)).start()
-
-    else:
-        print("wrong Command!!!")
+if __name__ == "__main__":
+    server_address = "127.0.0.1"
+    server_port = "80"
+    port = 8080
+    host = socket.gethostbyname(socket.gethostname())
+    register = server_address + ":" + server_port + "/register"
+    get_all = server_address + ":" + server_port + "/get-all"
+    get = server_address + ":" + server_port + "getIp?username="
+    threading.Thread(target=listener, args=(host, port)).start()
+    print("Peer Started")
+    while True:
+        option = input('1: init \n2: get all\n3: get\n4: request for connection\ninput:')
+        if option == '1':
+            username = input("Username:")
+            data = {
+                "username": username,
+                "ip": host
+            }
+            response = requests.post(register, json=data)
+            print('Response:', response.text)
+        elif option == '2':
+            response = requests.get(get_all)
+            print('Response:', response.text)
+        elif option == '3':
+            username = input("Target Username:")
+            response = requests.get(get + username)
+            print('Response:', response.text)
+        elif option == '4':
+            target_ip = input('Target IP:')
+            filename = input('Filename:')
+            threading.Thread(target=receiver, args=(host, target_ip, filename)).start()
+        else:
+            print("Invalid Command")

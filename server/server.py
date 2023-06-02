@@ -1,8 +1,8 @@
 import json
 import os
-import re
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from urllib.parse import urlparse, parse_qs
+
 import redis
 
 redis_host = os.environ.get('REDIS_HOST', 'localhost')
@@ -37,18 +37,16 @@ class RequestHandler(BaseHTTPRequestHandler):
         if self.path == '/register':
             try:
                 input_data = json.loads(body.decode())
-                if 'username' not in input_data or 'ip' not in input_data:
+                if 'username' not in input_data or 'address' not in input_data:
                     raise ValueError('Missing username or IP')
-                username = input_data['username']
-                ip = input_data['ip']
-                if not username or not ip:
+                input_username = input_data['username']
+                input_address = input_data['address']
+                if not input_username or not input_address:
                     raise ValueError('Empty username or IP')
-                if not re.match(r'^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$', ip):
-                    raise ValueError('Invalid IP address format.')
                 self.send_response(200)
                 self.send_header('Content-type', 'application/json')
                 self.end_headers()
-                redis_client.set(username, ip)
+                redis_client.set(input_username, input_address)
                 response_data = {'message': 'Registration successful'}
                 self.wfile.write(json.dumps(response_data).encode('utf-8'))
             except (json.JSONDecodeError, KeyError) as e:

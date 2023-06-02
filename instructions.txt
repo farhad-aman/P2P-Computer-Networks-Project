@@ -1,0 +1,5 @@
+install docker
+run "docker pull redis"
+run "docker run --name test-redis -d -p 6379:6379 redis"
+start server in localhost or docker
+start clients

@@ -216,6 +216,7 @@ def handle_get_all():
     messagebox.showinfo("Response", response.text)
     print("Get All.")
 
+
 def handle_get():
     global target_username_entry
     target_username = target_username_entry.get()
